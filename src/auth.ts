@@ -9,7 +9,13 @@ const allowed = () =>
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 
-const providers: Provider[] = [Google];
+// Trim in case the values were pasted into Vercel with stray spaces or newlines.
+const providers: Provider[] = [
+  Google({
+    clientId: process.env.AUTH_GOOGLE_ID?.trim(),
+    clientSecret: process.env.AUTH_GOOGLE_SECRET?.trim(),
+  }),
+];
 
 // Local development only: sign in as DEV_LOGIN_EMAIL without Google.
 if (process.env.NODE_ENV !== "production" && process.env.DEV_LOGIN_EMAIL) {
