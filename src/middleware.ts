@@ -1,4 +1,7 @@
-export { auth as middleware } from "@/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
+
+export const { auth: middleware } = NextAuth(authConfig);
 
 // Everything except the login page, auth endpoints, cron (checks its own secret) and static files.
 export const config = {

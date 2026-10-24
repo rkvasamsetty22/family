@@ -1,24 +1,60 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
+import Resend from "next-auth/providers/resend";
 import type { Provider } from "next-auth/providers";
+import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { eq } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { authConfig, isAllowed } from "./auth.config";
+import { verifyPassword } from "@/lib/password";
 
-const allowed = () =>
-  (process.env.ALLOWED_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+export const emailLinkEnabled = () => !!process.env.RESEND_API_KEY;
+export const googleEnabled = () => !!process.env.AUTH_GOOGLE_ID?.trim();
+export const devLoginEnabled = () => process.env.NODE_ENV !== "production" && !!process.env.DEV_LOGIN_EMAIL;
 
-// Trim in case the values were pasted into Vercel with stray spaces or newlines.
 const providers: Provider[] = [
-  Google({
-    clientId: process.env.AUTH_GOOGLE_ID?.trim(),
-    clientSecret: process.env.AUTH_GOOGLE_SECRET?.trim(),
+  Credentials({
+    id: "password",
+    name: "Email and password",
+    credentials: { email: {}, password: {} },
+    async authorize(creds) {
+      const email = String(creds?.email ?? "").trim().toLowerCase();
+      const password = String(creds?.password ?? "");
+      if (!isAllowed(email) || !password) return null;
+      const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email));
+      if (!user || !(await verifyPassword(password, user.passwordHash))) {
+        // Slow down guessing
+        await new Promise((r) => setTimeout(r, 800));
+        return null;
+      }
+      return { id: user.id, email: user.email, name: user.name };
+    },
   }),
 ];
 
-// Local development only: sign in as DEV_LOGIN_EMAIL without Google.
-if (process.env.NODE_ENV !== "production" && process.env.DEV_LOGIN_EMAIL) {
+if (emailLinkEnabled()) {
+  providers.push(
+    Resend({
+      apiKey: process.env.RESEND_API_KEY,
+      from: process.env.EMAIL_FROM || process.env.REMINDER_FROM || "Family Finance <onboarding@resend.dev>",
+      maxAge: 15 * 60,
+    }),
+  );
+}
+
+if (googleEnabled()) {
+  // Trim in case the values were pasted into Vercel with stray spaces or newlines.
+  providers.push(
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID?.trim(),
+      clientSecret: process.env.AUTH_GOOGLE_SECRET?.trim(),
+    }),
+  );
+}
+
+// Local development only: sign in as DEV_LOGIN_EMAIL without a password.
+if (devLoginEnabled()) {
   providers.push(
     Credentials({
       id: "dev",
@@ -30,17 +66,19 @@ if (process.env.NODE_ENV !== "production" && process.env.DEV_LOGIN_EMAIL) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  adapter: DrizzleAdapter(db, {
+    usersTable: schema.users,
+    accountsTable: schema.authAccounts,
+    sessionsTable: schema.authSessions,
+    verificationTokensTable: schema.verificationTokens,
+  }),
   providers,
-  session: { strategy: "jwt" },
-  pages: { signIn: "/login" },
   callbacks: {
+    ...authConfig.callbacks,
+    // Runs for every provider, including before a sign-in link is emailed.
     signIn({ user }) {
-      const email = user.email?.toLowerCase();
-      return !!email && allowed().includes(email);
-    },
-    authorized({ auth }) {
-      const email = auth?.user?.email?.toLowerCase();
-      return !!email && allowed().includes(email);
+      return isAllowed(user.email);
     },
   },
 });
@@ -49,6 +87,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 export async function requireUser() {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase();
-  if (!email || !allowed().includes(email)) throw new Error("Not authorised");
+  if (!isAllowed(email)) throw new Error("Not authorised");
   return session!.user!;
 }

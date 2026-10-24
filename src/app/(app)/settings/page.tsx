@@ -2,8 +2,17 @@ import { saveSettings } from "@/app/actions/masters";
 import { getSettings } from "@/lib/settings";
 import { aiEnabled } from "@/lib/ai";
 import { Field } from "@/components/fields";
+import { changePassword } from "@/app/actions/auth";
+import { MIN_PASSWORD } from "@/lib/password";
 
-export default async function SettingsPage() {
+const PW: Record<string, [string, string]> = {
+  saved: ["Password saved.", "text-good"],
+  short: [`Use at least ${MIN_PASSWORD} characters.`, "text-bad"],
+  mismatch: ["The two passwords do not match.", "text-bad"],
+};
+
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ pw?: string }> }) {
+  const { pw } = await searchParams;
   const s = await getSettings();
   return (
     <div className="max-w-xl">
@@ -23,9 +32,23 @@ export default async function SettingsPage() {
           <button className="btn">Save</button>
         </div>
       </form>
+      <form action={changePassword} className="card mt-4 grid gap-3">
+        <div className="card-title mb-0">Set or change your password</div>
+        {pw && PW[pw] && <p className={`text-sm ${PW[pw][1]}`}>{PW[pw][0]}</p>}
+        <Field label={`New password (at least ${MIN_PASSWORD} characters)`}>
+          <input name="password" type="password" required minLength={MIN_PASSWORD} autoComplete="new-password" className="input" />
+        </Field>
+        <Field label="Repeat new password">
+          <input name="confirm" type="password" required minLength={MIN_PASSWORD} autoComplete="new-password" className="input" />
+        </Field>
+        <div>
+          <button className="btn">Save password</button>
+        </div>
+      </form>
       <div className="card mt-4 text-sm text-ink-2">
         <div className="card-title">Integrations</div>
         <p>PDF reading and AI head suggestions: {aiEnabled() ? "on" : "off (set ANTHROPIC_API_KEY)"}</p>
+        <p>Email sign-in links: {process.env.RESEND_API_KEY ? "on" : "off (set RESEND_API_KEY)"}</p>
         <p>Daily email reminders: {process.env.RESEND_API_KEY ? `on, to ${process.env.REMINDER_TO}` : "off (set RESEND_API_KEY)"}</p>
       </div>
     </div>
