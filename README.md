@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Family Finance
 
-## Getting Started
+A private dashboard for one family's money: bank statements, cash, books by head, loans, payables and receivables, insurance and due dates, in INR.
 
-First, run the development server:
+## What it does (phase 1)
+
+- **Statement import**: upload CSV or Excel (.xlsx) exports from Indian banks (HDFC, SBI, ICICI, Axis and similar layouts are detected automatically). PDF statements are read by Claude when `ANTHROPIC_API_KEY` is set. Re-importing an overlapping statement skips lines already stored. The uploaded file is never stored.
+- **Head prompts**: each new line goes to the **Review queue**. Lines are pre-filled in this order: your saved rules, transfers between your own accounts / ATM withdrawals / card bill payments, petty expenses (debits under the limit in Settings go straight to *Petty expenses*), then an AI suggestion. Tick *Always* when posting to save a rule; matching lines still in the queue are filed at once.
+- **Books**: Income, Expense, Investment, Loan and Transfer heads. Only Income and Expense count towards income, expenses and savings.
+- **Cash entries**: add cash income and spending from the Ledger page.
+- **Loans** taken and given. Linking an EMI line to a loan reduces its outstanding by the principal part (EMI minus a month's interest).
+- **Payables and receivables** with due dates and monthly/quarterly/yearly repeats.
+- **Insurance** (life, term, health, vehicle, property) with cover totals and renewal dates. Linking a premium line to a policy moves its next due date forward.
+- **Due dates** page and an optional daily reminder email.
+- **Dashboard** for the Indian financial year (April to March).
+
+Policy numbers and loan account numbers are encrypted at rest (AES-256-GCM). Only emails in `ALLOWED_EMAILS` can sign in.
+
+## Run locally
 
 ```bash
+npm install
+cp .env.example .env        # fill in DATABASE_URL, AUTH_SECRET, ENCRYPTION_KEY, ALLOWED_EMAILS
+npm run db:migrate
+npm run db:seed             # default heads + a "Cash in hand" account
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+For local use without Google, set `DEV_LOGIN_EMAIL` to an allowed email; a *Dev login* button appears (never in production builds).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`npm test` runs the statement parser tests.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy (Vercel + Neon)
 
-## Learn More
+1. Create a Neon project and copy the **pooled** connection string.
+2. In Google Cloud Console, create an OAuth client (Web). Authorised redirect URI: `https://<your-app>.vercel.app/api/auth/callback/google`.
+3. Import the repo in Vercel and set the environment variables from `.env.example`:
+   `DATABASE_URL`, `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ALLOWED_EMAILS`, `ENCRYPTION_KEY` (`openssl rand -base64 32`, keep a copy: losing it makes stored policy numbers unreadable), and optionally `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `REMINDER_TO`, `CRON_SECRET`.
+4. Run migrations and seed once against Neon from your machine: `DATABASE_URL=... npm run db:migrate && DATABASE_URL=... npm run db:seed`.
+5. Deploy. The reminder cron in `vercel.json` runs daily at 08:00 IST.
 
-To learn more about Next.js, take a look at the following resources:
+## Roadmap
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Phase 2: investments and assets (land, house, gold, vehicles, stocks, company stakes) with approximate values, net worth, reports, Excel export.
+- Phase 3: goals and projections (children's education fees with inflation, retirement corpus), cash-flow forecast and a financial health scorecard.
