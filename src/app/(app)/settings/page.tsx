@@ -48,7 +48,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <div className="card mt-4 text-sm text-ink-2">
         <div className="card-title">Integrations</div>
         <p>PDF reading and AI head suggestions: {aiEnabled() ? "on" : "off (set ANTHROPIC_API_KEY)"}</p>
-        <p>Email sign-in links: {process.env.RESEND_API_KEY ? "on" : "off (set RESEND_API_KEY)"}</p>
         <p>Daily email reminders: {process.env.RESEND_API_KEY ? `on, to ${process.env.REMINDER_TO}` : "off (set RESEND_API_KEY)"}</p>
       </div>
     </div>

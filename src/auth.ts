@@ -1,15 +1,13 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import Resend from "next-auth/providers/resend";
 import type { Provider } from "next-auth/providers";
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { authConfig, isAllowed } from "./auth.config";
+import { authConfig } from "./auth.config";
 import { verifyPassword } from "@/lib/password";
+import { lookupActiveUser, touchLogin } from "@/lib/users";
 
-export const emailLinkEnabled = () => !!process.env.RESEND_API_KEY;
 export const googleEnabled = () => !!process.env.AUTH_GOOGLE_ID?.trim();
 export const devLoginEnabled = () => process.env.NODE_ENV !== "production" && !!process.env.DEV_LOGIN_EMAIL;
 
@@ -21,27 +19,17 @@ const providers: Provider[] = [
     async authorize(creds) {
       const email = String(creds?.email ?? "").trim().toLowerCase();
       const password = String(creds?.password ?? "");
-      if (!isAllowed(email) || !password) return null;
-      const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email));
-      if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      const [user] = email ? await db.select().from(schema.users).where(eq(schema.users.email, email)) : [];
+      if (!user || !user.active || !(await verifyPassword(password, user.passwordHash))) {
         // Slow down guessing
         await new Promise((r) => setTimeout(r, 800));
         return null;
       }
-      return { id: user.id, email: user.email, name: user.name };
+      await touchLogin(email);
+      return { id: user.id, email, name: user.name };
     },
   }),
 ];
-
-if (emailLinkEnabled()) {
-  providers.push(
-    Resend({
-      apiKey: process.env.RESEND_API_KEY,
-      from: process.env.EMAIL_FROM || process.env.REMINDER_FROM || "Family Finance <onboarding@resend.dev>",
-      maxAge: 15 * 60,
-    }),
-  );
-}
 
 if (googleEnabled()) {
   // Trim in case the values were pasted into Vercel with stray spaces or newlines.
@@ -67,26 +55,26 @@ if (devLoginEnabled()) {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: DrizzleAdapter(db, {
-    usersTable: schema.users,
-    accountsTable: schema.authAccounts,
-    sessionsTable: schema.authSessions,
-    verificationTokensTable: schema.verificationTokens,
-  }),
   providers,
   callbacks: {
     ...authConfig.callbacks,
-    // Runs for every provider, including before a sign-in link is emailed.
-    signIn({ user }) {
-      return isAllowed(user.email);
+    async signIn({ user }) {
+      return !!(await lookupActiveUser(user.email));
     },
   },
 });
 
-// Server actions and route handlers call this so data is never reachable without a session.
+// Pages, server actions and route handlers call this, so a removed or deactivated
+// user loses access immediately even if their session token has not expired.
 export async function requireUser() {
   const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!isAllowed(email)) throw new Error("Not authorised");
-  return session!.user!;
+  const user = await lookupActiveUser(session?.user?.email);
+  if (!user) throw new Error("Not authorised");
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!user.isAdmin) throw new Error("Only admins can do this");
+  return user;
 }

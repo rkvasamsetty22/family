@@ -18,11 +18,12 @@ Policy numbers and loan account numbers are encrypted at rest (AES-256-GCM).
 
 ## Signing in
 
-Only emails in `ALLOWED_EMAILS` can sign in, by any of:
+People sign in with email and password.
 
-- **Email and password.** The first time (or after forgetting it), use *First time here, or forgot your password?* on the login page with the `SETUP_CODE` you set in Vercel. Passwords can also be changed under Settings.
-- **Emailed sign-in link** (when `RESEND_API_KEY` is set). With Resend's test sender `onboarding@resend.dev`, mail only reaches the email you signed up to Resend with; verify a domain in Resend to send to other family members.
-- **Google** (optional, when `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` are set).
+- The emails in `ALLOWED_EMAILS` are the **admins**. The first time (or after forgetting the password), an admin uses *Admin: first-time setup or forgot password* on the login page with the `SETUP_CODE` set in Vercel.
+- Admins add everyone else under **Family users**: name, email, password and role (member or admin). They can reset passwords, remove or restore access, and delete users. Removing access takes effect on the person's next click.
+- Anyone can change their own password under Settings.
+- Google sign-in is optional (set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`); it only lets in people already added under Family users.
 
 ## Run locally
 
@@ -43,7 +44,7 @@ For local use without Google, set `DEV_LOGIN_EMAIL` to an allowed email; a *Dev 
 1. Add a Neon database from Vercel's Storage tab (this sets `DATABASE_URL`), or create one on neon.tech and copy the pooled connection string.
 2. Optional, for Google sign-in: in Google Cloud Console, create an OAuth client (Web). Authorised redirect URI: `https://<your-app>.vercel.app/api/auth/callback/google`.
 3. Import the repo in Vercel and set the environment variables from `.env.example`:
-   `DATABASE_URL`, `AUTH_SECRET` (`npx auth secret`), `ALLOWED_EMAILS`, `SETUP_CODE`, `ENCRYPTION_KEY` (any long random passphrase; keep a copy: losing it makes stored policy numbers unreadable), and optionally `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `REMINDER_TO`, `CRON_SECRET`.
+   `DATABASE_URL`, `AUTH_SECRET` (`npx auth secret`), `ALLOWED_EMAILS`, `SETUP_CODE`, `ENCRYPTION_KEY` (any long random passphrase; keep a copy: losing it makes stored policy numbers unreadable), and optionally `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY` and `REMINDER_TO` (reminder email), `CRON_SECRET`.
 4. Nothing to run by hand: the `vercel-build` script applies migrations and seeds default heads on every deploy (both are safe to repeat).
 5. Deploy. The reminder cron in `vercel.json` runs daily at 08:00 IST.
 
