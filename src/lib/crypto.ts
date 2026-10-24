@@ -1,12 +1,12 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
 
 // AES-256-GCM for sensitive identifiers (policy and loan account numbers).
 function key() {
   const k = process.env.ENCRYPTION_KEY;
   if (!k) throw new Error("ENCRYPTION_KEY is not set");
+  // A 32-byte base64 key is used as is; any other value is treated as a passphrase.
   const buf = Buffer.from(k, "base64");
-  if (buf.length !== 32) throw new Error("ENCRYPTION_KEY must be 32 bytes, base64");
-  return buf;
+  return buf.length === 32 ? buf : createHash("sha256").update(k).digest();
 }
 
 export function encrypt(plain: string | null | undefined): string | null {

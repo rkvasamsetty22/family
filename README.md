@@ -32,11 +32,11 @@ For local use without Google, set `DEV_LOGIN_EMAIL` to an allowed email; a *Dev 
 
 ## Deploy (Vercel + Neon)
 
-1. Create a Neon project and copy the **pooled** connection string.
+1. Add a Neon database from Vercel's Storage tab (this sets `DATABASE_URL`), or create one on neon.tech and copy the pooled connection string.
 2. In Google Cloud Console, create an OAuth client (Web). Authorised redirect URI: `https://<your-app>.vercel.app/api/auth/callback/google`.
 3. Import the repo in Vercel and set the environment variables from `.env.example`:
-   `DATABASE_URL`, `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ALLOWED_EMAILS`, `ENCRYPTION_KEY` (`openssl rand -base64 32`, keep a copy: losing it makes stored policy numbers unreadable), and optionally `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `REMINDER_TO`, `CRON_SECRET`.
-4. Run migrations and seed once against Neon from your machine: `DATABASE_URL=... npm run db:migrate && DATABASE_URL=... npm run db:seed`.
+   `DATABASE_URL`, `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ALLOWED_EMAILS`, `ENCRYPTION_KEY` (any long random passphrase; keep a copy: losing it makes stored policy numbers unreadable), and optionally `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `REMINDER_TO`, `CRON_SECRET`.
+4. Nothing to run by hand: the `vercel-build` script applies migrations and seeds default heads on every deploy (both are safe to repeat).
 5. Deploy. The reminder cron in `vercel.json` runs daily at 08:00 IST.
 
 ## Roadmap
