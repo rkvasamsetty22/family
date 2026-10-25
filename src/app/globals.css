@@ -209,6 +209,10 @@ body {
     background: var(--kind, var(--tint, var(--accent)));
   }
 
+  .nav-sub {
+    border-color: color-mix(in srgb, var(--tint-fg) 35%, transparent);
+  }
+
   .print-only {
     display: none;
   }
