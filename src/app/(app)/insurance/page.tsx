@@ -5,6 +5,7 @@ import { Empty, Field, Select } from "@/components/fields";
 import { fmtDate, money, moneyShort } from "@/lib/format";
 import { decrypt, mask } from "@/lib/crypto";
 import { todayIST } from "@/lib/dates";
+import { Tabs, pickTab } from "@/components/tabs";
 
 const TYPES = [
   { value: "term", label: "Term life" },
@@ -23,10 +24,12 @@ const FREQ = [
   { value: "single", label: "Single premium" },
 ];
 
-export default async function InsurancePage() {
+export default async function InsurancePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const tab = pickTab((await searchParams).tab, ["active", "lapsed", "add"] as const);
   const today = todayIST();
   const policies = await db.select().from(schema.policies).orderBy(desc(schema.policies.active), asc(schema.policies.nextDueDate));
   const active = policies.filter((p) => p.active);
+  const shown = policies.filter((p) => p.active === (tab === "active"));
   const cover = (types: string[]) => active.filter((p) => types.includes(p.type)).reduce((s, p) => s + Number(p.sumAssured ?? 0), 0);
   const yearlyPremium = active.reduce((s, p) => {
     const mult = { monthly: 12, quarterly: 4, half_yearly: 2, yearly: 1 }[p.frequency] ?? 0;
@@ -43,15 +46,25 @@ export default async function InsurancePage() {
           ["Vehicle / property", cover(["vehicle", "property"])],
           ["Premiums per year", yearlyPremium],
         ].map(([label, v]) => (
-          <div key={label as string} className="card">
-            <div className="text-xs text-ink-2">{label}</div>
-            <div className="text-lg font-semibold">{moneyShort(v as number)}</div>
+          <div key={label as string} className="tile">
+            <div className="tile-label">{label}</div>
+            <div className="mt-1 text-lg font-semibold tabular-nums">{moneyShort(v as number)}</div>
           </div>
         ))}
       </div>
+      <Tabs
+        base="/insurance"
+        active={tab}
+        tabs={[
+          { id: "active", label: "In force", count: active.length },
+          { id: "lapsed", label: "Lapsed", count: policies.length - active.length },
+          { id: "add", label: "+ Add policy" },
+        ]}
+      />
+      {tab !== "add" && (
       <div className="card mb-4 overflow-x-auto">
-        {policies.length === 0 ? (
-          <Empty>No policies yet.</Empty>
+        {shown.length === 0 ? (
+          <Empty>{tab === "active" ? "No policies yet." : "No lapsed policies."}</Empty>
         ) : (
           <table className="tbl min-w-[860px]">
             <thead>
@@ -66,7 +79,7 @@ export default async function InsurancePage() {
               </tr>
             </thead>
             <tbody>
-              {policies.map((p) => (
+              {shown.map((p) => (
                 <tr key={p.id} className={p.active ? "" : "opacity-50"}>
                   <td>
                     <div>{p.insurer} {p.planName}</div>
@@ -108,6 +121,8 @@ export default async function InsurancePage() {
           </table>
         )}
       </div>
+      )}
+      {tab === "add" && (
       <form action={createPolicy} className="card grid gap-3 md:grid-cols-4">
         <div className="card-title md:col-span-4">Add policy</div>
         <Field label="Type">
@@ -150,6 +165,7 @@ export default async function InsurancePage() {
           <button className="btn">Add policy</button>
         </div>
       </form>
+      )}
     </div>
   );
 }

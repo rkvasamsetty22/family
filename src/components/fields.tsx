@@ -79,3 +79,13 @@ export function Amount({ value, direction }: { value: string | number; direction
   if (!direction) return <span className="num">₹{s}</span>;
   return <span className={`num ${direction === "in" ? "text-good" : ""}`}>{direction === "in" ? "+" : "−"}₹{s}</span>;
 }
+
+// Coloured chip for an entry's head kind (income, expense, investment, loan, transfer).
+export function KindChip({ kind }: { kind: string | null | undefined }) {
+  if (!kind) return null;
+  return (
+    <span data-kind={kind} className="kind-chip">
+      {HEAD_KIND_LABEL[kind] ?? kind}
+    </span>
+  );
+}

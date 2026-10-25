@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
-import { accountBalances, expenseByHead, monthlySeries, totalsByKind, upcomingReminders } from "@/lib/queries";
+import { REMINDER_KIND, accountBalances, expenseByHead, monthlySeries, totalsByKind, upcomingReminders } from "@/lib/queries";
 import { pendingCount } from "@/lib/posting";
 import { fyRange, daysBetween, todayIST } from "@/lib/dates";
 import { fmtDate, money, moneyShort } from "@/lib/format";
@@ -9,10 +9,10 @@ import { IncomeExpenseChart } from "@/components/charts";
 import { HeadBars } from "@/components/head-bars";
 import { Empty } from "@/components/fields";
 
-function Tile({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" }) {
+function Tile({ label, value, sub, tone, kind }: { label: string; value: string; sub?: string; tone?: "good" | "bad"; kind?: string }) {
   return (
-    <div className="card">
-      <div className="text-xs text-ink-2">{label}</div>
+    <div className="tile" data-kind={kind}>
+      <div className="tile-label">{label}</div>
       <div className={`mt-1 text-xl font-semibold tabular-nums ${tone === "good" ? "text-good" : tone === "bad" ? "text-bad" : ""}`}>{value}</div>
       {sub && <div className="mt-0.5 text-xs text-ink-3">{sub}</div>}
     </div>
@@ -37,7 +37,7 @@ export default async function Dashboard() {
   if (balances.length <= 1 && totals.income === 0 && totals.expense === 0) {
     return (
       <div className="max-w-2xl">
-        <h1 className="page-title">Welcome</h1>
+        <h1 className="page-title">Welcome to Family Finance Manager</h1>
         <p className="page-sub">Four steps to get your family&apos;s finances in one place:</p>
         <ol className="card list-decimal space-y-2 pl-8 text-sm">
           <li><Link href="/accounts" className="text-accent underline">Add your bank accounts and cards</Link> with their opening balances.</li>
@@ -70,24 +70,29 @@ export default async function Dashboard() {
           <h1 className="page-title">Dashboard</h1>
           <p className="text-sm text-ink-2">{fy.label} (April to March) · as of {fmtDate(today)}</p>
         </div>
-        {pending > 0 && (
-          <Link href="/review" className="btn">
-            {pending} {pending === 1 ? "transaction" : "transactions"} to review
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Link href="/reports" className="btn-ghost">Reports</Link>
+          {pending > 0 && (
+            <Link href="/review" className="btn">
+              {pending} {pending === 1 ? "transaction" : "transactions"} to review
+            </Link>
+          )}
+        </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile label="Income this FY" value={moneyShort(totals.income)} />
-        <Tile label="Expenses this FY" value={moneyShort(totals.expense)} />
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">This financial year</h2>
+      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Tile kind="income" label="Income" value={moneyShort(totals.income)} />
+        <Tile kind="expense" label="Expenses" value={moneyShort(totals.expense)} />
         <Tile label="Saved" value={moneyShort(savings)} sub={rate != null ? `${rate}% of income` : undefined} tone={savings < 0 ? "bad" : "good"} />
-        <Tile label="Invested this FY" value={moneyShort(totals.invested)} sub={`EMIs paid ${moneyShort(totals.loanPaid)}`} />
+        <Tile kind="investment" label="Invested" value={moneyShort(totals.invested)} sub={`EMIs paid ${moneyShort(totals.loanPaid)}`} />
       </div>
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile label="Bank & cash balance" value={moneyShort(liquid)} sub={cardDues < 0 ? `Card dues ${moneyShort(-cardDues)}` : undefined} />
-        <Tile label="Loans outstanding" value={moneyShort(borrowed)} tone={borrowed > 0 ? "bad" : undefined} />
-        <Tile label="Lent out + receivable" value={moneyShort(lent + receivable)} />
-        <Tile label="Payables open" value={moneyShort(payable)} />
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">Position today</h2>
+      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div data-tone="accounts"><Tile label="Bank & cash balance" value={moneyShort(liquid)} sub={cardDues < 0 ? `Card dues ${moneyShort(-cardDues)}` : undefined} /></div>
+        <Tile kind="loan" label="Loans outstanding" value={moneyShort(borrowed)} tone={borrowed > 0 ? "bad" : undefined} />
+        <Tile kind="income" label="Lent out + receivable" value={moneyShort(lent + receivable)} />
+        <Tile kind="expense" label="Payables open" value={moneyShort(payable)} />
       </div>
 
       <div className="mb-4 grid gap-4 lg:grid-cols-5">
@@ -119,7 +124,9 @@ export default async function Dashboard() {
                       <td className={`whitespace-nowrap ${d < 0 ? "text-bad" : d <= 7 ? "text-warn" : "text-ink-2"}`}>
                         {d < 0 ? "Overdue" : d === 0 ? "Today" : fmtDate(r.date)}
                       </td>
-                      <td className="hidden text-ink-2 sm:table-cell">{r.kind}</td>
+                      <td className="hidden sm:table-cell">
+                        <span data-kind={REMINDER_KIND[r.kind]} className="kind-chip">{r.kind}</span>
+                      </td>
                       <td>{r.title}</td>
                       <td className="num">{r.amount ? money(r.amount) : ""}</td>
                     </tr>

@@ -4,6 +4,7 @@ import { createDue, deleteDue, settleDue } from "@/app/actions/masters";
 import { Empty, Field, Select } from "@/components/fields";
 import { fmtDate, money } from "@/lib/format";
 import { todayIST } from "@/lib/dates";
+import { Tabs, pickTab } from "@/components/tabs";
 
 type Due = typeof schema.dues.$inferSelect;
 const RECURRENCE = [
@@ -59,7 +60,8 @@ function DueTable({ rows, today }: { rows: Due[]; today: string }) {
   );
 }
 
-export default async function DuesPage() {
+export default async function DuesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const tab = pickTab((await searchParams).tab, ["payable", "receivable", "settled", "add"] as const);
   const today = todayIST();
   const [open, settled] = await Promise.all([
     db.select().from(schema.dues).where(eq(schema.dues.status, "open")).orderBy(asc(schema.dues.dueDate)),
@@ -72,14 +74,43 @@ export default async function DuesPage() {
     <div className="max-w-5xl">
       <h1 className="page-title">Payables & receivables</h1>
       <p className="page-sub">Bills, fees, taxes and anything else you owe, and money others owe you. Recurring ones roll forward when settled.</p>
-      <div className="card mb-4">
-        <div className="card-title">Payables · {money(sum(payables))}</div>
-        <DueTable rows={payables} today={today} />
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="tile" data-kind="expense">
+          <div className="tile-label">To pay</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">{money(sum(payables))}</div>
+        </div>
+        <div className="tile" data-kind="income">
+          <div className="tile-label">To receive</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">{money(sum(receivables))}</div>
+        </div>
+        <div className="tile" data-kind="transfer">
+          <div className="tile-label">Overdue</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">{open.filter((d) => d.dueDate < today).length}</div>
+        </div>
       </div>
-      <div className="card mb-4">
-        <div className="card-title">Receivables · {money(sum(receivables))}</div>
-        <DueTable rows={receivables} today={today} />
-      </div>
+      <Tabs
+        base="/dues"
+        active={tab}
+        tabs={[
+          { id: "payable", label: "Payables", count: payables.length },
+          { id: "receivable", label: "Receivables", count: receivables.length },
+          { id: "settled", label: "Recently settled" },
+          { id: "add", label: "+ Add" },
+        ]}
+      />
+      {tab === "payable" && (
+        <div className="card mb-4">
+          <div className="card-title">Payables · {money(sum(payables))}</div>
+          <DueTable rows={payables} today={today} />
+        </div>
+      )}
+      {tab === "receivable" && (
+        <div className="card mb-4">
+          <div className="card-title">Receivables · {money(sum(receivables))}</div>
+          <DueTable rows={receivables} today={today} />
+        </div>
+      )}
+      {tab === "add" && (
       <form action={createDue} className="card mb-4 grid gap-3 md:grid-cols-3">
         <div className="card-title md:col-span-3">Add</div>
         <Field label="Type">
@@ -104,7 +135,13 @@ export default async function DuesPage() {
           <button className="btn">Add</button>
         </div>
       </form>
-      {settled.length > 0 && (
+      )}
+      {tab === "settled" && settled.length === 0 && (
+        <div className="card">
+          <Empty>Nothing settled yet.</Empty>
+        </div>
+      )}
+      {tab === "settled" && settled.length > 0 && (
         <div className="card">
           <div className="card-title">Recently settled</div>
           <table className="tbl">

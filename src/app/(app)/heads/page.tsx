@@ -86,7 +86,7 @@ export default async function HeadsPage() {
           </form>
           <div className="max-h-[32rem] overflow-y-auto">
             {allHeads.map((h) => (
-              <form key={h.id} action={updateHead} className="flex items-center gap-2 border-b border-line py-1.5">
+              <form key={h.id} action={updateHead} data-kind={h.kind} className="kind-row flex items-center gap-2 border-b border-line py-1.5 pl-2.5">
                 <input type="hidden" name="id" value={h.id} />
                 <input name="name" defaultValue={h.name} className="input flex-1" aria-label="Head name" />
                 <div className="w-36">

@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: process.env.REMINDER_FROM || "Family Finance <onboarding@resend.dev>",
+      from: process.env.REMINDER_FROM || "Family Finance Manager <onboarding@resend.dev>",
       to: process.env.REMINDER_TO.split(",").map((s) => s.trim()),
       subject: `${items.length} payment${items.length > 1 ? "s" : ""} due in the next ${days} days`,
       html: `<p>Coming up:</p><table style="border-collapse:collapse;font-family:sans-serif;font-size:14px">${rows}</table>`,

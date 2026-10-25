@@ -5,6 +5,7 @@ import { Empty, Field, Select } from "@/components/fields";
 import { fmtDate, money } from "@/lib/format";
 import { decrypt, mask } from "@/lib/crypto";
 import { nextEmiDate } from "@/lib/dates";
+import { Tabs, pickTab } from "@/components/tabs";
 
 type Loan = typeof schema.loans.$inferSelect;
 
@@ -58,7 +59,8 @@ function LoanTable({ loans, given }: { loans: Loan[]; given?: boolean }) {
   );
 }
 
-export default async function LoansPage() {
+export default async function LoansPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const tab = pickTab((await searchParams).tab, ["taken", "given", "add"] as const);
   const loans = await db.select().from(schema.loans).orderBy(asc(schema.loans.closed), asc(schema.loans.party));
   const taken = loans.filter((l) => l.direction === "taken");
   const given = loans.filter((l) => l.direction === "given");
@@ -69,14 +71,38 @@ export default async function LoansPage() {
       <p className="page-sub">
         Home, vehicle, personal and gold loans, hand loans from people, and money you have lent. Link an EMI line to its loan in the review queue and the outstanding drops by the principal part automatically.
       </p>
-      <div className="card mb-4">
-        <div className="card-title">Borrowings · outstanding {money(sum(taken))}</div>
-        <LoanTable loans={taken} />
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="tile" data-kind="loan">
+          <div className="tile-label">I owe</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">{money(sum(taken))}</div>
+        </div>
+        <div className="tile" data-kind="income">
+          <div className="tile-label">Owed to me</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">{money(sum(given))}</div>
+        </div>
       </div>
-      <div className="card mb-4">
-        <div className="card-title">Loans given · to receive {money(sum(given))}</div>
-        <LoanTable loans={given} given />
-      </div>
+      <Tabs
+        base="/loans"
+        active={tab}
+        tabs={[
+          { id: "taken", label: "Borrowed", count: taken.filter((l) => !l.closed).length },
+          { id: "given", label: "Lent out", count: given.filter((l) => !l.closed).length },
+          { id: "add", label: "+ Add loan" },
+        ]}
+      />
+      {tab === "taken" && (
+        <div className="card mb-4">
+          <div className="card-title">Borrowings · outstanding {money(sum(taken))}</div>
+          <LoanTable loans={taken} />
+        </div>
+      )}
+      {tab === "given" && (
+        <div className="card mb-4">
+          <div className="card-title">Loans given · to receive {money(sum(given))}</div>
+          <LoanTable loans={given} given />
+        </div>
+      )}
+      {tab === "add" && (
       <form action={createLoan} className="card grid gap-3 md:grid-cols-4">
         <div className="card-title md:col-span-4">Add loan</div>
         <Field label="Type">
@@ -119,6 +145,7 @@ export default async function LoansPage() {
           <button className="btn">Add loan</button>
         </div>
       </form>
+      )}
     </div>
   );
 }

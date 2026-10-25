@@ -20,6 +20,9 @@ export type Reminder = {
   href: string;
 };
 
+// Colour each reminder type like the head kind it belongs to.
+export const REMINDER_KIND: Record<Reminder["kind"], string> = { EMI: "loan", Premium: "investment", Payable: "expense", Receivable: "income", Maturity: "transfer" };
+
 // Everything falling due from (today - lookback) to today + days, overdue first.
 export async function upcomingReminders(days: number, from: string = todayIST()): Promise<Reminder[]> {
   const until = addDays(from, days);

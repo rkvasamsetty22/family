@@ -15,7 +15,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Statements are uploaded through a server action; Vercel caps request bodies at 4.5 MB.
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
-  serverExternalPackages: ["exceljs"],
+  serverExternalPackages: ["exceljs", "jspdf", "jspdf-autotable"],
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   async headers() {
