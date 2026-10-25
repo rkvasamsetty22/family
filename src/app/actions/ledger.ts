@@ -10,6 +10,7 @@ import { applyPostingEffects } from "@/lib/posting";
 import { matchRule } from "@/lib/categorize";
 import { importTransactions } from "@/lib/categorize";
 import { parseCsv, parseXlsx, type ParsedTxn } from "@/lib/statements/parse";
+import Anthropic from "@anthropic-ai/sdk";
 import { aiEnabled, extractFromPdf } from "@/lib/ai";
 
 const refresh = () => revalidatePath("/", "layout");
@@ -122,7 +123,10 @@ export async function importStatement(fd: FormData): Promise<void> {
       throw new Error("Old .xls files are not supported. Open it and save as .xlsx or .csv, or download the PDF.");
     } else throw new Error("Upload a CSV, XLSX or PDF statement.");
   } catch (e) {
-    redirect("/import?error=" + encodeURIComponent((e as Error).message));
+    // API errors can name keys, models or limits; show those as a plain message and log the detail.
+    const service = e instanceof Anthropic.APIError;
+    if (service) console.error("PDF reading failed:", (e as Error).message);
+    redirect("/import?error=" + encodeURIComponent(service ? "Could not read the PDF right now. Try again later, or upload CSV or Excel." : (e as Error).message));
   }
   const r = await importTransactions(accountId, file.name, parsed);
   refresh();

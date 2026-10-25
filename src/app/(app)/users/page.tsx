@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
-import { asc } from "drizzle-orm";
+import { asc, desc } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { auth } from "@/auth";
+import { currentUser } from "@/auth";
 import { isAdminEmail } from "@/auth.config";
-import { lookupActiveUser } from "@/lib/users";
 import { createUser, resetUserPassword, updateUserAccess } from "@/app/actions/auth";
-import { MIN_PASSWORD } from "@/lib/password";
+import { MAX_PASSWORD, MIN_PASSWORD } from "@/lib/password";
 import { Empty, Field, Select } from "@/components/fields";
 
 const MSG: Record<string, [string, string]> = {
@@ -15,13 +14,34 @@ const MSG: Record<string, [string, string]> = {
   exists: ["A user with that email already exists.", "text-bad"],
   email: ["Enter a valid email.", "text-bad"],
   short: [`Passwords need at least ${MIN_PASSWORD} characters.`, "text-bad"],
+  long: [`Passwords can have at most ${MAX_PASSWORD} characters.`, "text-bad"],
+  weak: ["Too easy to guess. Avoid common words, repeated characters and your email name.", "text-bad"],
+};
+
+const EVENT_LABEL: Record<string, string> = {
+  login: "Signed in",
+  login_failed: "Wrong password",
+  login_locked: "Locked out (too many attempts)",
+  setup_password: "Admin password set with setup code",
+  setup_failed: "Wrong setup code",
+  password_changed: "Changed own password",
+  user_created: "Added user",
+  password_reset: "Reset password",
+  user_deactivated: "Removed access",
+  user_activated: "Restored access",
+  user_made_admin: "Made admin",
+  user_made_member: "Made member",
+  user_deleted: "Deleted user",
 };
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
-  const me = await lookupActiveUser((await auth())?.user?.email);
+  const me = await currentUser();
   if (!me?.isAdmin) redirect("/");
   const { msg } = await searchParams;
-  const users = await db.select().from(schema.users).orderBy(asc(schema.users.createdAt));
+  const [users, events] = await Promise.all([
+    db.select().from(schema.users).orderBy(asc(schema.users.createdAt)),
+    db.select().from(schema.auditLog).orderBy(desc(schema.auditLog.at)).limit(50),
+  ]);
   return (
     <div className="max-w-4xl">
       <h1 className="page-title">Family users</h1>
@@ -111,6 +131,37 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <button className="btn">Add user</button>
         </div>
       </form>
+
+      <div className="card mt-4 overflow-x-auto">
+        <div className="card-title">Security activity</div>
+        <p className="mb-3 text-xs text-ink-3">The last 50 sign-ins, failed attempts, lockouts and user changes.</p>
+        {events.length === 0 ? (
+          <Empty>Nothing yet.</Empty>
+        ) : (
+          <table className="tbl min-w-[640px]">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Event</th>
+                <th>By</th>
+                <th>For</th>
+                <th>IP address</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((e) => (
+                <tr key={e.id}>
+                  <td className="whitespace-nowrap">{e.at.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}</td>
+                  <td className={/failed|locked/.test(e.event) ? "text-bad" : ""}>{EVENT_LABEL[e.event] ?? e.event}</td>
+                  <td>{e.actor}</td>
+                  <td>{e.target && e.target !== e.actor ? e.target : ""}</td>
+                  <td className="text-ink-3">{e.ip}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

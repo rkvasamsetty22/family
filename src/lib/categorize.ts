@@ -115,7 +115,8 @@ export async function importTransactions(accountId: number, filename: string, pa
       if (h) Object.assign(drafts[needAi[k]], { headId: h.id, suggestedBy: "ai" });
     });
   } catch (e) {
-    console.error("AI head suggestion failed", e);
+    // Only the message: the error object can carry request details.
+    console.error("AI head suggestion failed:", (e as Error).message);
   }
 
   const [imp] = await db

@@ -3,12 +3,14 @@ import { getSettings } from "@/lib/settings";
 import { aiEnabled } from "@/lib/ai";
 import { Field } from "@/components/fields";
 import { changePassword } from "@/app/actions/auth";
-import { MIN_PASSWORD } from "@/lib/password";
+import { MAX_PASSWORD, MIN_PASSWORD } from "@/lib/password";
 
 const PW: Record<string, [string, string]> = {
   saved: ["Password saved.", "text-good"],
   short: [`Use at least ${MIN_PASSWORD} characters.`, "text-bad"],
   mismatch: ["The two passwords do not match.", "text-bad"],
+  long: [`Use at most ${MAX_PASSWORD} characters.`, "text-bad"],
+  weak: ["Too easy to guess. Avoid common words, repeated characters and your email name.", "text-bad"],
 };
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ pw?: string }> }) {

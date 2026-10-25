@@ -1,5 +1,4 @@
-import { auth } from "@/auth";
-import { lookupActiveUser } from "@/lib/users";
+import { currentUser } from "@/auth";
 import { REPORT_IDS, buildReport, resolvePeriod, type ReportId } from "@/lib/reports";
 import { EXPORT_FORMATS, reportFilename, toCsv, toPdf, toXlsx, type ExportFormat } from "@/lib/report-export";
 
@@ -22,8 +21,7 @@ const PRIVATE = {
 
 export async function GET(req: Request, { params }: { params: Promise<{ report: string }> }) {
   // Middleware already requires a session; check the user is still active as pages do.
-  const session = await auth();
-  const user = await lookupActiveUser(session?.user?.email);
+  const user = await currentUser();
   if (!user) return new Response("Not signed in", { status: 401, headers: PRIVATE });
 
   const { report } = await params;

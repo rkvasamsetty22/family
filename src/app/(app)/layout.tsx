@@ -1,5 +1,4 @@
-import { auth, signOut } from "@/auth";
-import { lookupActiveUser } from "@/lib/users";
+import { currentUser, signOut } from "@/auth";
 import { pendingCount } from "@/lib/posting";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -7,8 +6,7 @@ import { AppShell } from "@/components/app-shell";
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  const user = await lookupActiveUser(session?.user?.email);
+  const user = await currentUser();
   if (!user) redirect("/login");
   const pending = await pendingCount();
   return (
