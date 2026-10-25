@@ -2,12 +2,12 @@
 
 :root {
   color-scheme: light;
-  --bg: #f6f6f4;
-  --surface: #fcfcfb;
-  --border: #e3e2de;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --border: #e3e4e8;
   --text: #0b0b0b;
   --text-2: #52514e;
-  --text-3: #8a8984;
+  --text-3: #85847f;
   --accent: #2a78d6;
   --accent-ink: #ffffff;
   --series-1: #2a78d6;
@@ -15,8 +15,31 @@
   --good: #0f7a3d;
   --bad: #c43c3b;
   --warn: #9a6400;
+
+  /* Section tints: solid tone (white text on it passes AA) and a text tone for the theme. */
+  --t-overview: #4451c7;
+  --t-overview-fg: #4451c7;
+  --t-money: #0b7276;
+  --t-money-fg: #0b7276;
+  --t-accounts: #1c7a43;
+  --t-accounts-fg: #1c7a43;
+  --t-debts: #b4520f;
+  --t-debts-fg: #b4520f;
+  --t-cover: #7a43c0;
+  --t-cover-fg: #7a43c0;
+  --t-dates: #8a6300;
+  --t-dates-fg: #8a6300;
+  --t-setup: #4f5e6e;
+  --t-setup-fg: #4f5e6e;
+
+  /* Entry types (head kinds). */
+  --k-income: #1c7a43;
+  --k-expense: #c03553;
+  --k-investment: #7a43c0;
+  --k-loan: #b4520f;
+  --k-transfer: #5b6878;
 }
-@media (prefers-color-scheme: dark) {
+@media screen and (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
     --bg: #121211;
@@ -31,8 +54,38 @@
     --good: #4cc27c;
     --bad: #ef7d7c;
     --warn: #e0a83a;
+
+    --t-overview-fg: #8f9bff;
+    --t-money-fg: #4cc6c9;
+    --t-accounts-fg: #5fcf8c;
+    --t-debts-fg: #f0965a;
+    --t-cover-fg: #bb93f2;
+    --t-dates-fg: #e2b44a;
+    --t-setup-fg: #a8b4c2;
+
+    --k-income: #5fcf8c;
+    --k-expense: #f2809a;
+    --k-investment: #bb93f2;
+    --k-loan: #f0965a;
+    --k-transfer: #a8b4c2;
   }
 }
+
+/* data-tone picks the tint for a section of the app (sidebar items, page shell). */
+[data-tone="overview"] { --tint: var(--t-overview); --tint-fg: var(--t-overview-fg); }
+[data-tone="money"] { --tint: var(--t-money); --tint-fg: var(--t-money-fg); }
+[data-tone="accounts"] { --tint: var(--t-accounts); --tint-fg: var(--t-accounts-fg); }
+[data-tone="debts"] { --tint: var(--t-debts); --tint-fg: var(--t-debts-fg); }
+[data-tone="cover"] { --tint: var(--t-cover); --tint-fg: var(--t-cover-fg); }
+[data-tone="dates"] { --tint: var(--t-dates); --tint-fg: var(--t-dates-fg); }
+[data-tone="setup"] { --tint: var(--t-setup); --tint-fg: var(--t-setup-fg); }
+
+/* data-kind colours an entry by its head kind; in/out are used before a head is chosen. */
+[data-kind="income"], [data-kind="in"] { --kind: var(--k-income); }
+[data-kind="expense"], [data-kind="out"] { --kind: var(--k-expense); }
+[data-kind="investment"] { --kind: var(--k-investment); }
+[data-kind="loan"] { --kind: var(--k-loan); }
+[data-kind="transfer"] { --kind: var(--k-transfer); }
 
 @theme inline {
   --color-bg: var(--bg);
@@ -45,6 +98,8 @@
   --color-good: var(--good);
   --color-bad: var(--bad);
   --color-warn: var(--warn);
+  --color-tint: var(--tint, var(--accent));
+  --color-tint-fg: var(--tint-fg, var(--accent));
 }
 
 body {
@@ -55,22 +110,22 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-xl border border-line bg-surface p-4;
+    @apply rounded-xl border border-line bg-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)];
   }
   .card-title {
     @apply mb-3 text-sm font-semibold text-ink-2;
   }
   .btn {
-    @apply inline-flex items-center justify-center rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-tint px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-lg border border-line px-3 py-1.5 text-sm text-ink hover:bg-bg;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink hover:bg-bg;
   }
   .btn-danger {
     @apply inline-flex items-center justify-center rounded-lg px-2 py-1 text-xs text-bad hover:bg-bg;
   }
   .input {
-    @apply w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus:border-accent focus:outline-none;
+    @apply w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus:border-tint focus:outline-none;
   }
   .label {
     @apply mb-1 block text-xs font-medium text-ink-2;
@@ -84,13 +139,116 @@ body {
   .tbl td {
     @apply border-b border-line px-2 py-2 align-top;
   }
-  .num {
+  .tbl tbody tr:hover td {
+    background: color-mix(in srgb, var(--tint, var(--accent)) 4%, transparent);
+  }
+  .tbl tr.total td {
+    @apply border-b-0 font-semibold;
+    background: color-mix(in srgb, var(--tint, var(--accent)) 7%, transparent);
+  }
+  .num,
+  .tbl th.num {
     @apply text-right tabular-nums whitespace-nowrap;
   }
   .page-title {
-    @apply mb-1 text-xl font-semibold;
+    @apply mb-1 flex items-center gap-2.5 text-xl font-semibold;
+  }
+  .page-title::before {
+    content: "";
+    @apply inline-block h-5 w-1.5 shrink-0 rounded-full bg-tint;
   }
   .page-sub {
     @apply mb-5 text-sm text-ink-2;
+  }
+  .soft {
+    background: color-mix(in srgb, var(--tint, var(--accent)) 10%, var(--surface));
+  }
+
+  /* Tabs */
+  .tabs {
+    @apply mb-4 flex gap-1 overflow-x-auto border-b border-line;
+  }
+  .tab {
+    @apply -mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-ink-2 hover:text-ink;
+  }
+  .tab[aria-current="page"] {
+    @apply border-tint font-medium text-tint-fg;
+  }
+  .tab-count {
+    @apply rounded-full bg-bg px-1.5 text-xs tabular-nums text-ink-3;
+  }
+  .tab[aria-current="page"] .tab-count {
+    @apply text-tint-fg;
+    background: color-mix(in srgb, var(--tint) 14%, transparent);
+  }
+
+  /* Entry-type chips and row markers */
+  .kind-chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap;
+    color: var(--kind);
+    background: color-mix(in srgb, var(--kind) 12%, transparent);
+  }
+  .kind-row {
+    box-shadow: inset 3px 0 0 var(--kind);
+  }
+  .kind-card {
+    border-left: 4px solid var(--kind);
+  }
+
+  /* Summary tiles */
+  .tile {
+    @apply rounded-xl border border-line p-4;
+    background: color-mix(in srgb, var(--kind, var(--tint, var(--accent))) 7%, var(--surface));
+  }
+  .tile-label {
+    @apply flex items-center gap-1.5 text-xs font-medium text-ink-2;
+  }
+  .tile-label::before {
+    content: "";
+    @apply inline-block h-2 w-2 rounded-full;
+    background: var(--kind, var(--tint, var(--accent)));
+  }
+
+  .print-only {
+    display: none;
+  }
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  :root {
+    color-scheme: light;
+  }
+  body {
+    background: #fff !important;
+    color: #000;
+    font-size: 11px;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .card {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 14px;
+    break-inside: auto;
+  }
+  .tbl tr {
+    break-inside: avoid;
+  }
+  .tbl thead {
+    display: table-header-group;
+  }
+  .overflow-x-auto {
+    overflow: visible !important;
   }
 }

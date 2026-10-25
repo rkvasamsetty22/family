@@ -24,7 +24,8 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="card w-full max-w-sm">
-        <h1 className="mb-1 text-center text-lg font-semibold">Family Finance</h1>
+        <div className="mb-3 flex justify-center" data-tone="overview"><span className="grid h-10 w-10 place-items-center rounded-xl bg-tint text-lg font-bold text-white" aria-hidden>₹</span></div>
+        <h1 className="mb-1 text-center text-lg font-semibold">Family Finance Manager</h1>
         <p className="mb-5 text-center text-sm text-ink-2">Private. Only family members can sign in.</p>
         {error && <p className="mb-4 text-sm text-bad">{error}</p>}
         <form action={loginWithPassword} className="grid gap-3">

@@ -1,4 +1,4 @@
-# Family Finance
+# Family Finance Manager
 
 A private dashboard for one family's money: bank statements, cash, books by head, loans, payables and receivables, insurance and due dates, in INR.
 
@@ -13,6 +13,8 @@ A private dashboard for one family's money: bank statements, cash, books by head
 - **Insurance** (life, term, health, vehicle, property) with cover totals and renewal dates. Linking a premium line to a policy moves its next due date forward.
 - **Due dates** page and an optional daily reminder email.
 - **Dashboard** for the Indian financial year (April to March).
+- **Reports**: income & expenses, month by month, totals by head, transactions, and balances & obligations, for this or last FY, a month, or any date range. Print any report, or download it as PDF, Excel or CSV; the *full report pack* puts every report in one PDF or workbook. Downloads need a signed-in family user, are never cached, leave out policy and loan account numbers, and neutralise spreadsheet formulas in bank descriptions.
+- **Colour-coded layout**: each menu section has its own tint, entries are coloured by type (income, expense, investment, loan, transfer), and long pages are split into tabs.
 
 Policy numbers and loan account numbers are encrypted at rest (AES-256-GCM).
 
@@ -50,5 +52,5 @@ For local use without Google, set `DEV_LOGIN_EMAIL` to an allowed email; a *Dev 
 
 ## Roadmap
 
-- Phase 2: investments and assets (land, house, gold, vehicles, stocks, company stakes) with approximate values, net worth, reports, Excel export.
+- Phase 2: investments and assets (land, house, gold, vehicles, stocks, company stakes) with approximate values and net worth.
 - Phase 3: goals and projections (children's education fees with inflation, retirement corpus), cash-flow forecast and a financial health scorecard.

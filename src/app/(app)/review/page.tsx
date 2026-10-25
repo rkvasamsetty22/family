@@ -6,6 +6,7 @@ import { guessPattern } from "@/lib/categorize";
 import { getSettings } from "@/lib/settings";
 import { Amount, Empty, HeadSelect, Select } from "@/components/fields";
 import { fmtDate } from "@/lib/format";
+import { Tabs, pickTab } from "@/components/tabs";
 
 const SOURCE_LABEL: Record<string, string> = {
   ai: "AI suggestion",
@@ -17,7 +18,7 @@ const SOURCE_LABEL: Record<string, string> = {
 export default async function ReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ added?: string; skipped?: string; auto?: string }>;
+  searchParams: Promise<{ added?: string; skipped?: string; auto?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
   const [pending, heads, accounts, loans, policies, settings] = await Promise.all([
@@ -36,6 +37,15 @@ export default async function ReviewPage({
   const acct = new Map(accounts.map((a) => [a.id, a.name]));
   const members = settings.members.split(",").map((m) => m.trim()).filter(Boolean);
   const withSuggestion = pending.filter((p) => p.headId).length;
+  const TABS = [
+    { id: "all", label: "All", test: () => true },
+    { id: "suggested", label: "Suggested", test: (t: (typeof pending)[number]) => !!t.headId },
+    { id: "needs", label: "Needs a head", test: (t: (typeof pending)[number]) => !t.headId },
+    { id: "in", label: "Money in", test: (t: (typeof pending)[number]) => t.direction === "in" },
+    { id: "out", label: "Money out", test: (t: (typeof pending)[number]) => t.direction === "out" },
+  ];
+  const tab = pickTab(sp.tab, TABS.map((t) => t.id));
+  const shown = pending.filter(TABS.find((t) => t.id === tab)!.test);
 
   return (
     <div className="max-w-5xl">
@@ -55,18 +65,29 @@ export default async function ReviewPage({
         </div>
       ) : (
         <>
-          {withSuggestion > 0 && (
-            <form action={postAllSuggested} className="mb-3">
-              <button className="btn-ghost">Accept all {withSuggestion} suggestions</button>
-            </form>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <Tabs tabs={TABS.map((t) => ({ id: t.id, label: t.label, count: pending.filter(t.test).length }))} active={tab} base="/review" />
+            </div>
+            {withSuggestion > 0 && (
+              <form action={postAllSuggested} className="mb-3">
+                <button className="btn-ghost">Accept all {withSuggestion} suggestions</button>
+              </form>
+            )}
+          </div>
+          {shown.length === 0 && (
+            <div className="card">
+              <Empty>Nothing in this tab.</Empty>
+            </div>
           )}
           <div className="space-y-2">
-            {pending.map((t) => (
-              <form key={t.id} action={postReviewed} className="card">
+            {shown.map((t) => (
+              <form key={t.id} action={postReviewed} data-kind={t.direction} className="card kind-card">
                 <input type="hidden" name="id" value={t.id} />
                 <div className="mb-2 flex flex-wrap items-start justify-between gap-x-4">
                   <div className="min-w-0">
                     <div className="text-xs text-ink-3">
+                      <span data-kind={t.direction} className="kind-chip mr-2">{t.direction === "in" ? "Money in" : "Money out"}</span>
                       {fmtDate(t.date)} · {acct.get(t.accountId)}
                       {t.suggestedBy && <span className="ml-2 rounded bg-bg px-1.5 py-0.5">{SOURCE_LABEL[t.suggestedBy] ?? t.suggestedBy}</span>}
                     </div>
