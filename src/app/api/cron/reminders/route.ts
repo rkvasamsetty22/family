@@ -3,6 +3,7 @@ import { upcomingReminders } from "@/lib/queries";
 import { getSetting } from "@/lib/settings";
 import { daysBetween, todayIST } from "@/lib/dates";
 import { fmtDate, money } from "@/lib/format";
+import { safeEqual } from "@/lib/password";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 // Called daily by Vercel Cron (see vercel.json). Emails what is due soon or overdue.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret || !safeEqual(req.headers.get("authorization") ?? "", `Bearer ${secret}`)) {
     return NextResponse.json({ error: "unauthorised" }, { status: 401 });
   }
   const days = Number(await getSetting("reminderDays")) || 7;

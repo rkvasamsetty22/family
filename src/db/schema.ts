@@ -157,5 +157,29 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("member"),
   active: boolean("active").notNull().default(true),
   lastLoginAt: timestamp("last_login_at"),
+  // Sessions issued before this are rejected, so a password change or reset signs out other devices.
+  passwordChangedAt: timestamp("password_changed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// Failed sign-in and setup-code attempts per email or IP, for lockouts that hold across serverless instances.
+export const authThrottle = pgTable("auth_throttle", {
+  key: text("key").primaryKey(),
+  failures: integer("failures").notNull().default(0),
+  windowStart: timestamp("window_start").notNull().defaultNow(),
+  lockedUntil: timestamp("locked_until"),
+});
+
+// Security events: sign-ins, lockouts, password and access changes. Never stores passwords or financial data.
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: serial("id").primaryKey(),
+    at: timestamp("at").notNull().defaultNow(),
+    event: text("event").notNull(),
+    actor: text("actor"),
+    target: text("target"),
+    ip: text("ip"),
+  },
+  (t) => [index("audit_log_at_idx").on(t.at)],
+);

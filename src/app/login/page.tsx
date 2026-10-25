@@ -1,9 +1,11 @@
 import { signIn, devLoginEnabled, googleEnabled } from "@/auth";
 import { loginWithPassword, setupPassword } from "@/app/actions/auth";
-import { MIN_PASSWORD } from "@/lib/password";
+import { MAX_PASSWORD, MIN_PASSWORD } from "@/lib/password";
 
 const ERRORS: Record<string, string> = {
   password: "Email or password is wrong.",
+  CredentialsSignin: "Email or password is wrong.",
+  locked: "Too many attempts. Wait 15 minutes and try again, or ask an admin to reset your password.",
   AccessDenied: "This account has not been added to Family users.",
 };
 const SETUP: Record<string, string> = {
@@ -11,15 +13,19 @@ const SETUP: Record<string, string> = {
   invalid: "Setup code or email is not right. This form is only for the admin emails set in Vercel.",
   short: `Use at least ${MIN_PASSWORD} characters.`,
   mismatch: "The two passwords do not match.",
+  long: `Use at most ${MAX_PASSWORD} characters.`,
+  weak: "Too easy to guess. Avoid common words, repeated characters and your email name.",
+  locked: "Too many wrong setup codes. The form is paused for an hour.",
 };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; setup?: string }>;
+  searchParams: Promise<{ error?: string; code?: string; setup?: string; changed?: string }>;
 }) {
   const sp = await searchParams;
-  const error = sp.error ? ERRORS[sp.error] ?? "Sign-in failed. Try again." : null;
+  const errorKey = sp.code === "locked" ? "locked" : sp.error;
+  const error = errorKey ? ERRORS[errorKey] ?? "Sign-in failed. Try again." : null;
   const setupError = sp.setup ? SETUP[sp.setup] : null;
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
@@ -27,6 +33,7 @@ export default async function LoginPage({
         <h1 className="mb-1 text-center text-lg font-semibold">Family Finance</h1>
         <p className="mb-5 text-center text-sm text-ink-2">Private. Only family members can sign in.</p>
         {error && <p className="mb-4 text-sm text-bad">{error}</p>}
+        {sp.changed && !error && <p className="mb-4 text-sm text-good">Password changed. Sign in again with the new one.</p>}
         <form action={loginWithPassword} className="grid gap-3">
           <label>
             <span className="label">Email</span>

@@ -16,6 +16,15 @@ A private dashboard for one family's money: bank statements, cash, books by head
 
 Policy numbers and loan account numbers are encrypted at rest (AES-256-GCM).
 
+## Security
+
+- Passwords are hashed with scrypt at OWASP's recommended cost (older hashes are upgraded at the next sign-in). Common or easily guessed passwords are refused.
+- Five wrong passwords for an email, or twenty from one IP address, within 15 minutes lock sign-in for 15 minutes. Wrong setup codes pause the setup form for an hour. An admin resetting a password clears its lockout.
+- Sessions end after 2 hours without use and 12 hours after sign-in. Changing or resetting a password signs out every other device.
+- Every request is checked against Family users in the database, so removing access takes effect on the person's next click.
+- Strict security headers on every response: a nonce-based Content Security Policy, HSTS, no framing, no caching of financial pages.
+- Family users shows the last 50 security events (sign-ins, failed attempts, lockouts, user changes) with IP addresses.
+
 ## Signing in
 
 People sign in with email and password.
@@ -37,7 +46,7 @@ npm run dev
 
 For local use without Google, set `DEV_LOGIN_EMAIL` to an allowed email; a *Dev login* button appears (never in production builds).
 
-`npm test` runs the statement parser tests.
+`npm test` runs the statement parser and security tests.
 
 ## Deploy (Vercel + Neon)
 
