@@ -2,8 +2,9 @@ import type { NextAuthConfig } from "next-auth";
 
 // Emails in ALLOWED_EMAILS are the family admins. They can set their own password
 // with SETUP_CODE and add everyone else under Family users.
+// ADMIN_EMAIL (whose password can come from ADMIN_PASSWORD) is always an admin too.
 export const adminEmails = () =>
-  (process.env.ALLOWED_EMAILS ?? "")
+  `${process.env.ALLOWED_EMAILS ?? ""},${process.env.ADMIN_EMAIL ?? ""}`
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);

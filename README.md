@@ -31,7 +31,8 @@ Policy numbers and loan account numbers are encrypted at rest (AES-256-GCM).
 
 People sign in with email and password.
 
-- The emails in `ALLOWED_EMAILS` are the **admins**. The first time (or after forgetting the password), an admin uses *Admin: first-time setup or forgot password* on the login page with the `SETUP_CODE` set in Vercel.
+- `ADMIN_EMAIL` is the main admin. Set `ADMIN_PASSWORD` in Vercel (mark it *Sensitive*) and redeploy: the deploy hashes it and sets it as that admin's password. It is applied again only when you change the value, so a password changed later under Settings is not overwritten.
+- The emails in `ALLOWED_EMAILS` are also **admins**. The first time (or after forgetting the password), an admin uses *Admin: first-time setup or forgot password* on the login page with the `SETUP_CODE` set in Vercel.
 - Admins add everyone else under **Family users**: name, email, password and role (member or admin). They can reset passwords, remove or restore access, and delete users. Removing access takes effect on the person's next click.
 - Anyone can change their own password under Settings.
 - Google sign-in is optional (set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`); it only lets in people already added under Family users.
